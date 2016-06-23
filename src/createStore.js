@@ -147,37 +147,66 @@ export default function createStore(reducer, preloadedState, enhancer) {
    * return something else (for example, a Promise you can await).
    */
   function dispatch(action) {
-    if (!isPlainObject(action)) {
-      throw new Error(
-        'Actions must be plain objects. ' +
-        'Use custom middleware for async actions.'
-      )
-    }
+    return new Promise(function (resolve, reject) {
+      if (!isPlainObject(action)) {
+        throw new Error(
+          'Actions must be plain objects. ' +
+          'Use custom middleware for async actions.'
+        )
+      }
 
-    if (typeof action.type === 'undefined') {
-      throw new Error(
-        'Actions may not have an undefined "type" property. ' +
-        'Have you misspelled a constant?'
-      )
-    }
+      if (typeof action.type === 'undefined') {
+        throw new Error(
+          'Actions may not have an undefined "type" property. ' +
+          'Have you misspelled a constant?'
+        )
+      }
 
-    if (isDispatching) {
-      throw new Error('Reducers may not dispatch actions.')
-    }
+      if (isDispatching) {
+        throw new Error('Reducers may not dispatch actions.')
+      }
 
-    try {
-      isDispatching = true
-      currentState = currentReducer(currentState, action)
-    } finally {
-      isDispatching = false
-    }
+      var result
+      try {
+        isDispatching = true
+        result = currentReducer(currentState, action)
+      } catch (e) {
+        result = Promise.reject(e)
+      }
 
-    var listeners = currentListeners = nextListeners
-    for (var i = 0; i < listeners.length; i++) {
-      listeners[i]()
-    }
+      Promise.all([ result ]).then(function ([ state ]) {
+        isDispatching = false
+        return state
+      }, function (e) {
+        isDispatching = false
+        throw e
+      }).then(function (state) {
+        if (typeof state === 'undefined') {
+          var actionType = action && action.type
+          var actionName = actionType && `"${actionType.toString()}"` || 'an action'
 
-    return action
+          throw new Error(
+            `Given action ${actionName}, reducer returned undefined. ` +
+            `To ignore an action, you must explicitly return the previous state.`
+          )
+        }
+
+        currentState = state
+
+        var listeners = currentListeners = nextListeners
+        var promises = []
+        for (var i = 0; i < listeners.length; i++) {
+          var result = listeners[i]()
+          promises.push(result)
+        }
+
+        return Promise.all(promises)
+      }).then(function () {
+        resolve(action)
+      }).catch(function (e) {
+        reject(e)
+      })
+    })
   }
 
   /**
@@ -196,7 +225,6 @@ export default function createStore(reducer, preloadedState, enhancer) {
     }
 
     currentReducer = nextReducer
-    dispatch({ type: ActionTypes.INIT })
   }
 
   /**
@@ -238,14 +266,21 @@ export default function createStore(reducer, preloadedState, enhancer) {
     }
   }
 
-  // When a store is created, an "INIT" action is dispatched so that every
-  // reducer returns their initial state. This effectively populates
-  // the initial state tree.
-  dispatch({ type: ActionTypes.INIT })
+  /**
+   * Remove the init action from createStore and replaceReducer.
+   * Separate it a standalone method to return a promise of dispatching,
+   * which is more easy for developers to arrange callback.
+   *
+   * @returns {Promise} A promise of dispatching init action.
+   */
+  function initState() {
+    return dispatch({ type: ActionTypes.INIT })
+  }
 
   return {
     dispatch,
     subscribe,
+    initState,
     getState,
     replaceReducer,
     [$$observable]: observable

@@ -46,34 +46,6 @@ function getUnexpectedStateShapeWarningMessage(inputState, reducers, action) {
   }
 }
 
-function assertReducerSanity(reducers) {
-  Object.keys(reducers).forEach(key => {
-    var reducer = reducers[key]
-    var initialState = reducer(undefined, { type: ActionTypes.INIT })
-
-    if (typeof initialState === 'undefined') {
-      throw new Error(
-        `Reducer "${key}" returned undefined during initialization. ` +
-        `If the state passed to the reducer is undefined, you must ` +
-        `explicitly return the initial state. The initial state may ` +
-        `not be undefined.`
-      )
-    }
-
-    var type = '@@redux/PROBE_UNKNOWN_ACTION_' + Math.random().toString(36).substring(7).split('').join('.')
-    if (typeof reducer(undefined, { type }) === 'undefined') {
-      throw new Error(
-        `Reducer "${key}" returned undefined when probed with a random type. ` +
-        `Don't try to handle ${ActionTypes.INIT} or other actions in "redux/*" ` +
-        `namespace. They are considered private. Instead, you must return the ` +
-        `current state for any unknown actions, unless it is undefined, ` +
-        `in which case you must return the initial state, regardless of the ` +
-        `action type. The initial state may not be undefined.`
-      )
-    }
-  })
-}
-
 /**
  * Turns an object whose values are different reducer functions, into a single
  * reducer function. It will call every child reducer, and gather their results
@@ -101,39 +73,47 @@ export default function combineReducers(reducers) {
   }
   var finalReducerKeys = Object.keys(finalReducers)
 
-  var sanityError
-  try {
-    assertReducerSanity(finalReducers)
-  } catch (e) {
-    sanityError = e
-  }
-
   return function combination(state = {}, action) {
-    if (sanityError) {
-      throw sanityError
-    }
-
-    if (process.env.NODE_ENV !== 'production') {
-      var warningMessage = getUnexpectedStateShapeWarningMessage(state, finalReducers, action)
-      if (warningMessage) {
-        warning(warningMessage)
+    return new Promise(function (resolve, reject) {
+      if (process.env.NODE_ENV !== 'production') {
+        var warningMessage = getUnexpectedStateShapeWarningMessage(state, finalReducers, action)
+        if (warningMessage) {
+          warning(warningMessage)
+        }
       }
-    }
 
-    var hasChanged = false
-    var nextState = {}
-    for (var i = 0; i < finalReducerKeys.length; i++) {
-      var key = finalReducerKeys[i]
-      var reducer = finalReducers[key]
-      var previousStateForKey = state[key]
-      var nextStateForKey = reducer(previousStateForKey, action)
-      if (typeof nextStateForKey === 'undefined') {
-        var errorMessage = getUndefinedStateErrorMessage(key, action)
-        throw new Error(errorMessage)
+      var hasChanged = false
+      var nextState = {}
+      var promises = []
+
+      for (var i = 0; i < finalReducerKeys.length; i++) {
+        var key = finalReducerKeys[i]
+        var reducer = finalReducers[key]
+        var previousStateForKey = state[key]
+
+        var result = reducer(previousStateForKey, action)
+
+        promises.push(result)
       }
-      nextState[key] = nextStateForKey
-      hasChanged = hasChanged || nextStateForKey !== previousStateForKey
-    }
-    return hasChanged ? nextState : state
+
+      Promise.all(promises).then(function (states) {
+        for (var i = 0; i < finalReducerKeys.length; i++) {
+          var key = finalReducerKeys[i]
+          var previousStateForKey = state[key]
+          var nextStateForKey = states[i]
+
+          if (typeof nextStateForKey === 'undefined') {
+            var errorMessage = getUndefinedStateErrorMessage(key, action)
+            throw new Error(errorMessage)
+          }
+          nextState[key] = nextStateForKey
+          hasChanged = hasChanged || nextStateForKey !== previousStateForKey
+        }
+
+        resolve(hasChanged ? nextState : state)
+      }).catch(function (e) {
+        reject(e)
+      })
+    })
   }
 }
