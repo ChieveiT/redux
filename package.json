@@ -1,7 +1,7 @@
 {
-  "name": "redux",
-  "version": "3.5.2",
-  "description": "Predictable state container for JavaScript apps",
+  "name": "coeus-redux",
+  "version": "1.0.0",
+  "description": "Fork from redux to support promise in reducers and subscribers",
   "main": "lib/index.js",
   "jsnext:main": "es/index.js",
   "typings": "./index.d.ts",
@@ -36,7 +36,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/reactjs/redux.git"
+    "url": "https://github.com/ChieveiT/redux.git"
   },
   "keywords": [
     "redux",
@@ -49,7 +49,9 @@
     "live",
     "replay",
     "flux",
-    "elm"
+    "elm",
+    "promise",
+    "async"
   ],
   "authors": [
     "Dan Abramov <dan.abramov@me.com> (https://github.com/gaearon)",
