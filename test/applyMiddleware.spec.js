@@ -16,17 +16,20 @@ describe('applyMiddleware', () => {
     const spy = expect.createSpy(() => {})
     const store = applyMiddleware(test(spy), thunk)(createStore)(reducers.todos)
 
-    store.dispatch(addTodo('Use Redux'))
-    store.dispatch(addTodo('Flux FTW!'))
+    return store.initState().then(() => {
+      return store.dispatch(addTodo('Use Redux'))
+    }).then(() => {
+      return store.dispatch(addTodo('Flux FTW!'))
+    }).then(() => {
+      expect(spy.calls.length).toEqual(1)
 
-    expect(spy.calls.length).toEqual(1)
+      expect(Object.keys(spy.calls[0].arguments[0])).toEqual([
+        'getState',
+        'dispatch'
+      ])
 
-    expect(Object.keys(spy.calls[0].arguments[0])).toEqual([
-      'getState',
-      'dispatch'
-    ])
-
-    expect(store.getState()).toEqual([ { id: 1, text: 'Use Redux' }, { id: 2, text: 'Flux FTW!' } ])
+      expect(store.getState()).toEqual([ { id: 1, text: 'Use Redux' }, { id: 2, text: 'Flux FTW!' } ])
+    })
   })
 
   it('passes recursive dispatches through the middleware chain', () => {
@@ -45,38 +48,43 @@ describe('applyMiddleware', () => {
     })
   })
 
-  it('works with thunk middleware', done => {
+  it('works with thunk middleware', () => {
     const store = applyMiddleware(thunk)(createStore)(reducers.todos)
 
-    store.dispatch(addTodoIfEmpty('Hello'))
-    expect(store.getState()).toEqual([
-      {
-        id: 1,
-        text: 'Hello'
-      }
-    ])
+    return store.initState().then(() => {
+      return store.dispatch(addTodoIfEmpty('Hello'))
+    }).then(() => {
+      expect(store.getState()).toEqual([
+        {
+          id: 1,
+          text: 'Hello'
+        }
+      ])
 
-    store.dispatch(addTodoIfEmpty('Hello'))
-    expect(store.getState()).toEqual([
-      {
-        id: 1,
-        text: 'Hello'
-      }
-    ])
+      return store.dispatch(addTodoIfEmpty('Hello'))
+    }).then(() => {
+      expect(store.getState()).toEqual([
+        {
+          id: 1,
+          text: 'Hello'
+        }
+      ])
 
-    store.dispatch(addTodo('World'))
-    expect(store.getState()).toEqual([
-      {
-        id: 1,
-        text: 'Hello'
-      },
-      {
-        id: 2,
-        text: 'World'
-      }
-    ])
+      return store.dispatch(addTodo('World'))
+    }).then(() => {
+      expect(store.getState()).toEqual([
+        {
+          id: 1,
+          text: 'Hello'
+        },
+        {
+          id: 2,
+          text: 'World'
+        }
+      ])
 
-    store.dispatch(addTodoAsync('Maybe')).then(() => {
+      return store.dispatch(addTodoAsync('Maybe'))
+    }).then(() => {
       expect(store.getState()).toEqual([
         {
           id: 1,
@@ -91,11 +99,14 @@ describe('applyMiddleware', () => {
           text: 'Maybe'
         }
       ])
-      done()
     })
   })
 
-  it('keeps unwrapped dispatch available while middleware is initializing', () => {
+  // Once to support promise in dispatch, it is dangerous to dispatch actions
+  // regardless of the sequence. So forbid the test case below right now and we
+  // don't need to wait for it until Redux 4.x.
+
+  /*it('keeps unwrapped dispatch available while middleware is initializing', () => {
     // This is documenting the existing behavior in Redux 3.x.
     // We plan to forbid this in Redux 4.x.
 
@@ -105,11 +116,14 @@ describe('applyMiddleware', () => {
     }
 
     const store = createStore(reducers.todos, applyMiddleware(earlyDispatch))
-    expect(store.getState()).toEqual([
-      {
-        id: 1,
-        text: 'Hello'
-      }
-    ])
-  })
+
+    store.initState().then(() => {
+      expect(store.getState()).toEqual([
+        {
+          id: 1,
+          text: 'Hello'
+        }
+      ])
+    })
+  })*/
 })

@@ -18,20 +18,25 @@ describe('bindActionCreators', () => {
   })
 
   it('wraps the action creators with the dispatch function', () => {
-    const boundActionCreators = bindActionCreators(actionCreators, store.dispatch)
-    expect(
-      Object.keys(boundActionCreators)
-    ).toEqual(
-      Object.keys(actionCreatorFunctions)
-    )
+    return store.initState().then(() => {
+      const boundActionCreators = bindActionCreators(actionCreators, store.dispatch)
+      expect(
+        Object.keys(boundActionCreators)
+      ).toEqual(
+        Object.keys(actionCreatorFunctions)
+      )
 
-    const action = boundActionCreators.addTodo('Hello')
-    expect(action).toEqual(
-      actionCreators.addTodo('Hello')
-    )
-    expect(store.getState()).toEqual([
-      { id: 1, text: 'Hello' }
-    ])
+      return Promise.all([
+        boundActionCreators.addTodo('Hello'),
+        actionCreators.addTodo('Hello')
+      ])
+    }).then(([ action1, action2 ]) => {
+      expect(action1).toEqual(action2)
+
+      expect(store.getState()).toEqual([
+        { id: 1, text: 'Hello' }
+      ])
+    })
   })
 
   it('skips non-function values in the passed object', () => {
@@ -51,14 +56,20 @@ describe('bindActionCreators', () => {
   })
 
   it('supports wrapping a single function only', () => {
-    const actionCreator = actionCreators.addTodo
-    const boundActionCreator = bindActionCreators(actionCreator, store.dispatch)
+    return store.initState().then(() => {
+      const actionCreator = actionCreators.addTodo
+      const boundActionCreator = bindActionCreators(actionCreator, store.dispatch)
 
-    const action = boundActionCreator('Hello')
-    expect(action).toEqual(actionCreator('Hello'))
-    expect(store.getState()).toEqual([
-      { id: 1, text: 'Hello' }
-    ])
+      return Promise.all([
+        boundActionCreator('Hello'),
+        actionCreator('Hello')
+      ])
+    }).then(([ action1, action2 ]) => {
+      expect(action1).toEqual(action2)
+      expect(store.getState()).toEqual([
+        { id: 1, text: 'Hello' }
+      ])
+    })
   })
 
   it('throws for an undefined actionCreator', () => {

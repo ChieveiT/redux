@@ -36,6 +36,25 @@ export function todosReverse(state = [], action) {
   }
 }
 
+export function todosAsync(state = [], action) {
+  switch (action.type) {
+    case ADD_TODO:
+      return new Promise(function (resolve) {
+        setTimeout(function () {
+          resolve([
+            ...state, 
+            {
+              id: id(state),
+              text: action.text
+            }
+          ])
+        })
+      })
+    default:
+      return state
+  }
+}
+
 export function dispatchInTheMiddleOfReducer(state = [], action) {
   switch (action.type) {
     case DISPATCH_IN_MIDDLE:

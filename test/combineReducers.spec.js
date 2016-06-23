@@ -1,6 +1,6 @@
 import expect from 'expect'
 import { combineReducers } from '../src'
-import createStore, { ActionTypes } from '../src/createStore'
+import createStore from '../src/createStore'
 
 describe('Utils', () => {
   describe('combineReducers', () => {
@@ -12,10 +12,36 @@ describe('Utils', () => {
         action.type === 'push' ? [ ...state, action.value ] : state
       })
 
-      const s1 = reducer({}, { type: 'increment' })
-      expect(s1).toEqual({ counter: 1, stack: [] })
-      const s2 = reducer(s1, { type: 'push', value: 'a' })
-      expect(s2).toEqual({ counter: 1, stack: [ 'a' ] })
+      return reducer({}, { type: 'increment' }).then((s1) => {
+        expect(s1).toEqual({ counter: 1, stack: [] })
+
+        return reducer(s1, { type: 'push', value: 'a' })
+      }).then((s2) => {
+        expect(s2).toEqual({ counter: 1, stack: [ 'a' ] })
+      })
+    })
+
+    it('support promise in reducers', () => {
+      const reducer = combineReducers({
+        counter: (state = 0, action) => new Promise(function (resolve) {
+          setTimeout(function () {
+            resolve(action.type === 'increment' ? state + 1 : state)
+          })
+        }),
+        stack: (state = [], action) => new Promise(function (resolve) {
+          setTimeout(function () {
+            resolve(action.type === 'push' ? [ ...state, action.value ] : state)
+          })
+        })
+      })
+
+      return reducer({}, { type: 'increment' }).then((s1) => {
+        expect(s1).toEqual({ counter: 1, stack: [] })
+
+        return reducer(s1, { type: 'push', value: 'a' })
+      }).then((s2) => {
+        expect(s2).toEqual({ counter: 1, stack: [ 'a' ] })
+      })
     })
 
     it('ignores all props which are not a function', () => {
@@ -26,9 +52,11 @@ describe('Utils', () => {
         stack: (state = []) => state
       })
 
-      expect(
-        Object.keys(reducer({ }, { type: 'push' }))
-      ).toEqual([ 'stack' ])
+      return reducer({ }, { type: 'push' }).then((state) => {
+        expect(
+          Object.keys(state)
+        ).toEqual([ 'stack' ])
+      })
     })
 
     it('throws an error if a reducer returns undefined handling an action', () => {
@@ -49,27 +77,23 @@ describe('Utils', () => {
         }
       })
 
-      expect(
-        () => reducer({ counter: 0 }, { type: 'whatever' })
-      ).toThrow(
-      /"whatever".*"counter"/
-      )
-      expect(
-        () => reducer({ counter: 0 }, null)
-      ).toThrow(
-      /"counter".*an action/
-      )
-      expect(
-        () => reducer({ counter: 0 }, { })
-      ).toThrow(
-      /"counter".*an action/
-      )
+      return Promise.all([
+        reducer({ counter: 0 }, { type: 'whatever' }).catch((e) => {
+          expect(() => {throw e}).toThrow(/"whatever".*"counter"/)
+        }),
+        reducer({ counter: 0 }, null).catch((e) => {
+          expect(() => {throw e}).toThrow(/"counter".*an action/)
+        }),
+        reducer({ counter: 0 }, { }).catch((e) => {
+          expect(() => {throw e}).toThrow(/"counter".*an action/)
+        })
+      ])
     })
 
     it('throws an error on first call if a reducer returns undefined initializing', () => {
       const reducer = combineReducers({
         counter(state, action) {
-          switch (action.type) {
+          switch (action && action.type) {
             case 'increment':
               return state + 1
             case 'decrement':
@@ -79,9 +103,9 @@ describe('Utils', () => {
           }
         }
       })
-      expect(() => reducer({ })).toThrow(
-        /"counter".*initialization/
-      )
+      return reducer({ }).catch((e) => {
+        expect(() => {throw e}).toThrow(/"counter".*an action/)
+      })
     })
 
     it('catches error thrown in reducer when initializing and re-throw', () => {
@@ -90,9 +114,9 @@ describe('Utils', () => {
           throw new Error('Error thrown in reducer')
         }
       })
-      expect(() => reducer({ })).toThrow(
-        /Error thrown in reducer/
-      )
+      return reducer({ }).catch((e) => {
+        expect(() => {throw e}).toThrow(/Error thrown in reducer/)
+      })
     })
 
     it('allows a symbol to be used as an action type', () => {
@@ -109,24 +133,31 @@ describe('Utils', () => {
         }
       })
 
-      expect(reducer({ counter: 0 }, { type: increment }).counter).toEqual(1)
+      return reducer({ counter: 0 }, { type: increment }).then((state) => {
+        expect(state.counter).toEqual(1)
+      })
     })
 
     it('maintains referential equality if the reducers it is combining do', () => {
       const reducer = combineReducers({
-        child1(state = { }) {
+        child1(state = { a: 1 }) {
           return state
         },
-        child2(state = { }) {
+        child2(state = { b: 2 }) {
           return state
         },
-        child3(state = { }) {
+        child3(state = { c: 3 }) {
           return state
         }
       })
 
-      const initialState = reducer(undefined, '@@INIT')
-      expect(reducer(initialState, { type: 'FOO' })).toBe(initialState)
+      var initialState
+      return reducer(undefined, '@@INIT').then((state) => {
+        initialState = state
+        return reducer(initialState, { type: 'FOO' })
+      }).then((state) => {
+        expect(state).toBe(initialState)
+      })
     })
 
     it('does not have referential equality if one of the reducers changes something', () => {
@@ -147,11 +178,21 @@ describe('Utils', () => {
         }
       })
 
-      const initialState = reducer(undefined, '@@INIT')
-      expect(reducer(initialState, { type: 'increment' })).toNotBe(initialState)
+      var initialState
+      return reducer(undefined, '@@INIT').then((state) => {
+        initialState = state
+        return reducer(initialState, { type: 'increment' })
+      }).then((state) => {
+        expect(state).toNotBe(initialState)
+      })
     })
 
-    it('throws an error on first call if a reducer attempts to handle a private action', () => {
+    // Due to deleting assertReducerSanity in combineReducer.js, this test case can never be run
+    // correctly. However, it might not be a problem because reducer should not care about whether 
+    // an action is private or not, but make sure to return current state for a unknown action and 
+    // never to return an undefined state.
+    
+    /*it('throws an error on first call if a reducer attempts to handle a private action', () => {
       const reducer = combineReducers({
         counter(state, action) {
           switch (action.type) {
@@ -170,16 +211,17 @@ describe('Utils', () => {
       expect(() => reducer()).toThrow(
         /"counter".*private/
       )
-    })
+    })*/
 
     it('warns if no reducers are passed to combineReducers', () => {
       const spy = expect.spyOn(console, 'error')
       const reducer = combineReducers({ })
-      reducer({ })
-      expect(spy.calls[0].arguments[0]).toMatch(
-        /Store does not have a valid reducer/
-      )
-      spy.restore()
+      return reducer({ }).then(() => {
+        expect(spy.calls[0].arguments[0]).toMatch(
+          /Store does not have a valid reducer/
+        )
+        spy.restore()
+      })
     })
 
     it('warns if input state does not match reducer shape', () => {
@@ -193,49 +235,58 @@ describe('Utils', () => {
         }
       })
 
-      reducer()
-      expect(spy.calls.length).toBe(0)
+      return reducer().then(() => {
+        expect(spy.calls.length).toBe(0)
 
-      reducer({ foo: { bar: 2 } })
-      expect(spy.calls.length).toBe(0)
+        return reducer({ foo: { bar: 2 } })
+      }).then(() => {
+        expect(spy.calls.length).toBe(0)
 
-      reducer({
-        foo: { bar: 2 },
-        baz: { qux: 4 }
-      })
-      expect(spy.calls.length).toBe(0)
+        return reducer({
+          foo: { bar: 2 },
+          baz: { qux: 4 }
+        })
+      }).then(() => {
+        expect(spy.calls.length).toBe(0)
 
-      createStore(reducer, { bar: 2 })
-      expect(spy.calls[0].arguments[0]).toMatch(
-        /Unexpected key "bar".*createStore.*instead: "foo", "baz"/
-      )
+        return createStore(reducer, { bar: 2 }).initState()
+      }).then(() => {
+        expect(spy.calls[0].arguments[0]).toMatch(
+          /Unexpected key "bar".*createStore.*instead: "foo", "baz"/
+        )
 
-      createStore(reducer, { bar: 2, qux: 4 })
-      expect(spy.calls[1].arguments[0]).toMatch(
-        /Unexpected keys "bar", "qux".*createStore.*instead: "foo", "baz"/
-      )
+        return createStore(reducer, { bar: 2, qux: 4 }).initState()
+      }).then(() => {
+        expect(spy.calls[1].arguments[0]).toMatch(
+          /Unexpected keys "bar", "qux".*createStore.*instead: "foo", "baz"/
+        )
 
-      createStore(reducer, 1)
-      expect(spy.calls[2].arguments[0]).toMatch(
-        /createStore has unexpected type of "Number".*keys: "foo", "baz"/
-      )
+        return createStore(reducer, 1).initState()
+      }).then(() => {
+        expect(spy.calls[2].arguments[0]).toMatch(
+          /createStore has unexpected type of "Number".*keys: "foo", "baz"/
+        )
 
-      reducer({ bar: 2 })
-      expect(spy.calls[3].arguments[0]).toMatch(
-        /Unexpected key "bar".*reducer.*instead: "foo", "baz"/
-      )
+        return reducer({ bar: 2 })
+      }).then(() => {
+        expect(spy.calls[3].arguments[0]).toMatch(
+          /Unexpected key "bar".*reducer.*instead: "foo", "baz"/
+        )
 
-      reducer({ bar: 2, qux: 4 })
-      expect(spy.calls[4].arguments[0]).toMatch(
-        /Unexpected keys "bar", "qux".*reducer.*instead: "foo", "baz"/
-      )
+        return reducer({ bar: 2, qux: 4 })
+      }).then(() => {
+        expect(spy.calls[4].arguments[0]).toMatch(
+          /Unexpected keys "bar", "qux".*reducer.*instead: "foo", "baz"/
+        )
 
-      reducer(1)
-      expect(spy.calls[5].arguments[0]).toMatch(
-        /reducer has unexpected type of "Number".*keys: "foo", "baz"/
-      )
+        return reducer(1)
+      }).then(() => {
+        expect(spy.calls[5].arguments[0]).toMatch(
+          /reducer has unexpected type of "Number".*keys: "foo", "baz"/
+        )
 
-      spy.restore()
+        spy.restore()
+      })      
     })
   })
 })

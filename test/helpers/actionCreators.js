@@ -6,15 +6,16 @@ export function addTodo(text) {
 
 export function addTodoAsync(text) {
   return dispatch => new Promise(resolve => setImmediate(() => {
-    dispatch(addTodo(text))
-    resolve()
+    dispatch(addTodo(text)).then(() => {
+      resolve()
+    })
   }))
 }
 
 export function addTodoIfEmpty(text) {
   return (dispatch, getState) => {
     if (!getState().length) {
-      dispatch(addTodo(text))
+      return dispatch(addTodo(text))
     }
   }
 }
