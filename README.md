@@ -2,7 +2,7 @@
 
 Fork from [redux](https://github.com/reactjs/redux) to support promise in reducers and subscribers.
 
-[![build status](https://img.shields.io/travis/reactjs/redux/master.svg?style=flat-square)](https://travis-ci.org/reactjs/redux)
+[![Build Status](https://travis-ci.org/ChieveiT/redux.svg?branch=coeus-redux)](https://travis-ci.org/ChieveiT/redux)
 [![npm version](https://img.shields.io/npm/v/coeus-redux.svg?style=flat-square)](https://www.npmjs.com/package/coeus-redux)
 [![npm downloads](https://img.shields.io/npm/dm/coeus-redux.svg?style=flat-square)](https://www.npmjs.com/package/coeus-redux)
 
