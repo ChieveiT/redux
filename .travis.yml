@@ -9,7 +9,7 @@ script:
   - npm run check:examples
 branches:
   only:
-    - master
+    - coeus-redux
 cache:
   directories:
   - $HOME/.npm
