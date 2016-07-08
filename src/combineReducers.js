@@ -73,45 +73,42 @@ export default function combineReducers(reducers) {
   }
   var finalReducerKeys = Object.keys(finalReducers)
 
-  return function combination(state = {}, action) {
+  return function combination(states = {}, action) {
     return new Promise(function (resolve, reject) {
       if (process.env.NODE_ENV !== 'production') {
-        var warningMessage = getUnexpectedStateShapeWarningMessage(state, finalReducers, action)
+        var warningMessage = getUnexpectedStateShapeWarningMessage(states, finalReducers, action)
         if (warningMessage) {
           warning(warningMessage)
         }
       }
 
       var hasChanged = false
-      var nextState = {}
+      var nextStates = {}
       var promises = []
 
       for (var i = 0; i < finalReducerKeys.length; i++) {
-        var key = finalReducerKeys[i]
-        var reducer = finalReducers[key]
-        var previousStateForKey = state[key]
+        let key = finalReducerKeys[i]
+        let reducer = finalReducers[key]
+        let previousStateForKey = states[key]
 
-        var result = reducer(previousStateForKey, action)
-
-        promises.push(result)
-      }
-
-      Promise.all(promises).then(function (states) {
-        for (var i = 0; i < finalReducerKeys.length; i++) {
-          var key = finalReducerKeys[i]
-          var previousStateForKey = state[key]
-          var nextStateForKey = states[i]
-
-          if (typeof nextStateForKey === 'undefined') {
+        let p = Promise.all([
+          reducer(previousStateForKey, action)
+        ]).then(function ([ state ]) {
+          if (typeof state === 'undefined') {
             var errorMessage = getUndefinedStateErrorMessage(key, action)
             throw new Error(errorMessage)
           }
-          nextState[key] = nextStateForKey
-          hasChanged = hasChanged || nextStateForKey !== previousStateForKey
-        }
 
-        resolve(hasChanged ? nextState : state)
-      }).catch(function (e) {
+          nextStates[key] = state
+          hasChanged = hasChanged || state !== previousStateForKey
+        })
+
+        promises.push(p)
+      }
+
+      Promise.all(promises).then(function () {
+        resolve(hasChanged ? nextStates : states)
+      }, function (e) {
         reject(e)
       })
     })
