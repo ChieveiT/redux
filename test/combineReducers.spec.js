@@ -224,7 +224,7 @@ describe('Utils', () => {
       })
     })
 
-    it('warns if input state does not match reducer shape', () => {
+    /*it('warns if input state does not match reducer shape', () => {
       const spy = expect.spyOn(console, 'error')
       const reducer = combineReducers({
         foo(state = { bar: 1 }) {
@@ -282,6 +282,85 @@ describe('Utils', () => {
         return reducer(1)
       }).then(() => {
         expect(spy.calls[5].arguments[0]).toMatch(
+          /reducer has unexpected type of "Number".*keys: "foo", "baz"/
+        )
+
+        spy.restore()
+      })      
+    })*/
+
+    it('filter state on reducer shape to support dynamic reducers', () => {
+      const spy = expect.spyOn(console, 'error')
+      const reducer = combineReducers({
+        foo(state = { bar: 1 }) {
+          return state
+        },
+        baz(state = { qux: 3 }) {
+          return state
+        }
+      })
+
+      var store
+
+      return reducer().then(() => {
+        expect(spy.calls.length).toBe(0)
+
+        return reducer({ foo: { bar: 2 } })
+      }).then((state) => {
+        expect(state).toEqual({
+          foo: { bar: 2 },
+          baz: { qux: 3 }
+        })
+
+        return reducer({
+          foo: { bar: 2 },
+          baz: { qux: 4 }
+        })
+      }).then((state) => {
+        expect(state).toEqual({
+          foo: { bar: 2 },
+          baz: { qux: 4 }
+        })
+
+        store = createStore(reducer, { bar: 2 })
+        return store.initState()
+      }).then(() => {
+        expect(store.getState()).toEqual({
+          foo: { bar: 1 },
+          baz: { qux: 3 }
+        })
+
+        store = createStore(reducer, { bar: 2, qux: 4 })
+        return store.initState()
+      }).then(() => {
+        expect(store.getState()).toEqual({
+          foo: { bar: 1 },
+          baz: { qux: 3 }
+        })
+
+        return createStore(reducer, 1).initState()
+      }).then(() => {
+        expect(spy.calls[0].arguments[0]).toMatch(
+          /createStore has unexpected type of "Number".*keys: "foo", "baz"/
+        )
+
+        return reducer({ bar: 2 })
+      }).then((state) => {
+        expect(state).toEqual({
+          foo: { bar: 1 },
+          baz: { qux: 3 }
+        })
+
+        return reducer({ bar: 2, qux: 4 })
+      }).then((state) => {
+        expect(state).toEqual({
+          foo: { bar: 1 },
+          baz: { qux: 3 }
+        })
+
+        return reducer(1)
+      }).then(() => {
+        expect(spy.calls[1].arguments[0]).toMatch(
           /reducer has unexpected type of "Number".*keys: "foo", "baz"/
         )
 

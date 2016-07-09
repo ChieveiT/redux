@@ -1,5 +1,6 @@
 import { ActionTypes } from './createStore'
 import isPlainObject from 'lodash/isPlainObject'
+import isEqual from 'lodash/isEqual'
 import warning from './utils/warning'
 
 function getUndefinedStateErrorMessage(key, action) {
@@ -31,17 +32,6 @@ function getUnexpectedStateShapeWarningMessage(inputState, reducers, action) {
       ({}).toString.call(inputState).match(/\s([a-z|A-Z]+)/)[1] +
       `". Expected argument to be an object with the following ` +
       `keys: "${reducerKeys.join('", "')}"`
-    )
-  }
-
-  var unexpectedKeys = Object.keys(inputState).filter(key => !reducers.hasOwnProperty(key))
-
-  if (unexpectedKeys.length > 0) {
-    return (
-      `Unexpected ${unexpectedKeys.length > 1 ? 'keys' : 'key'} ` +
-      `"${unexpectedKeys.join('", "')}" found in ${argumentName}. ` +
-      `Expected to find one of the known reducer keys instead: ` +
-      `"${reducerKeys.join('", "')}". Unexpected keys will be ignored.`
     )
   }
 }
@@ -85,6 +75,11 @@ export default function combineReducers(reducers) {
       var hasChanged = false
       var nextStates = {}
       var promises = []
+
+      // to support dynamic reducers
+      if (!isEqual(Object.keys(states), finalReducerKeys)) {
+        hasChanged = true
+      }
 
       for (var i = 0; i < finalReducerKeys.length; i++) {
         let key = finalReducerKeys[i]
