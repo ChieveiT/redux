@@ -44,15 +44,40 @@ describe('Utils', () => {
       })
     })
 
-    it('ignores all props which are not a function', () => {
+    it('support recursive combination', () => {
       const reducer = combineReducers({
-        fake: true,
-        broken: 'string',
-        another: { nested: 'object' },
+        tree: {
+          nodeOne: (state = 'one') => state, 
+          children: {
+            nodeTwo: (state = 'two') => state,
+            nodeThree: (state = 'three') => state
+          }
+        },
         stack: (state = []) => state
       })
 
-      return reducer({ }, { type: 'push' }).then((state) => {
+      return reducer().then((state) => {
+        expect(state).toEqual({
+          tree: {
+            nodeOne: 'one',
+            children: {
+              nodeTwo: 'two',
+              nodeThree: 'three'
+            }
+          },
+          stack: []
+        })
+      })
+    })
+
+    it('ignores all props which are not a function or a plain object', () => {
+      const reducer = combineReducers({
+        fake: true,
+        broken: 'string',
+        stack: (state = []) => state
+      })
+
+      return reducer({ }).then((state) => {
         expect(
           Object.keys(state)
         ).toEqual([ 'stack' ])
@@ -187,7 +212,7 @@ describe('Utils', () => {
       })
     })
 
-    // Due to deleting assertReducerSanity in combineReducer.js, this test case can never be run
+    // Due to deleting assertReducerSanity in combineReducer.js, this test case can never run
     // correctly. However, it might not be a problem because reducer should not care about whether 
     // an action is private or not, but make sure to return current state for a unknown action and 
     // never to return an undefined state.
@@ -223,71 +248,6 @@ describe('Utils', () => {
         spy.restore()
       })
     })
-
-    /*it('warns if input state does not match reducer shape', () => {
-      const spy = expect.spyOn(console, 'error')
-      const reducer = combineReducers({
-        foo(state = { bar: 1 }) {
-          return state
-        },
-        baz(state = { qux: 3 }) {
-          return state
-        }
-      })
-
-      return reducer().then(() => {
-        expect(spy.calls.length).toBe(0)
-
-        return reducer({ foo: { bar: 2 } })
-      }).then(() => {
-        expect(spy.calls.length).toBe(0)
-
-        return reducer({
-          foo: { bar: 2 },
-          baz: { qux: 4 }
-        })
-      }).then(() => {
-        expect(spy.calls.length).toBe(0)
-
-        return createStore(reducer, { bar: 2 }).initState()
-      }).then(() => {
-        expect(spy.calls[0].arguments[0]).toMatch(
-          /Unexpected key "bar".*createStore.*instead: "foo", "baz"/
-        )
-
-        return createStore(reducer, { bar: 2, qux: 4 }).initState()
-      }).then(() => {
-        expect(spy.calls[1].arguments[0]).toMatch(
-          /Unexpected keys "bar", "qux".*createStore.*instead: "foo", "baz"/
-        )
-
-        return createStore(reducer, 1).initState()
-      }).then(() => {
-        expect(spy.calls[2].arguments[0]).toMatch(
-          /createStore has unexpected type of "Number".*keys: "foo", "baz"/
-        )
-
-        return reducer({ bar: 2 })
-      }).then(() => {
-        expect(spy.calls[3].arguments[0]).toMatch(
-          /Unexpected key "bar".*reducer.*instead: "foo", "baz"/
-        )
-
-        return reducer({ bar: 2, qux: 4 })
-      }).then(() => {
-        expect(spy.calls[4].arguments[0]).toMatch(
-          /Unexpected keys "bar", "qux".*reducer.*instead: "foo", "baz"/
-        )
-
-        return reducer(1)
-      }).then(() => {
-        expect(spy.calls[5].arguments[0]).toMatch(
-          /reducer has unexpected type of "Number".*keys: "foo", "baz"/
-        )
-
-        spy.restore()
-      })      
-    })*/
 
     it('filter state on reducer shape to support dynamic reducers', () => {
       const spy = expect.spyOn(console, 'error')

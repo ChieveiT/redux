@@ -53,15 +53,25 @@ function getUnexpectedStateShapeWarningMessage(inputState, reducers, action) {
  * passed object, and builds a state object with the same shape.
  */
 export default function combineReducers(reducers) {
+  if (!isPlainObject(reducers)) {
+    throw new Error(`Expected a plain object`)
+  }
+
   var reducerKeys = Object.keys(reducers)
+  var finalReducerKeys = []
   var finalReducers = {}
   for (var i = 0; i < reducerKeys.length; i++) {
     var key = reducerKeys[i]
+    
     if (typeof reducers[key] === 'function') {
+      finalReducerKeys.push(key)
       finalReducers[key] = reducers[key]
+    } else if (isPlainObject(reducers[key])) {
+      // support recursive
+      finalReducerKeys.push(key)
+      finalReducers[key] = combineReducers(reducers[key])
     }
   }
-  var finalReducerKeys = Object.keys(finalReducers)
 
   return function combination(states = {}, action) {
     return new Promise(function (resolve, reject) {
