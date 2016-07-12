@@ -1,6 +1,6 @@
 {
   "name": "coeus-redux",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Fork from redux to support promise in reducers and subscribers",
   "main": "lib/index.js",
   "jsnext:main": "es/index.js",
