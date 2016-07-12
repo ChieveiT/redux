@@ -18,7 +18,7 @@ describe('createStore', () => {
     expect(methods).toContain('replaceReducer')
   })
 
-  it('throws if reducer is not a function', () => {
+  it('throws if reducer is not a function or a plain object', () => {
     expect(() =>
       createStore()
     ).toThrow()
@@ -28,12 +28,79 @@ describe('createStore', () => {
     ).toThrow()
 
     expect(() =>
-      createStore({})
-    ).toThrow()
-
-    expect(() =>
       createStore(() => {})
     ).toNotThrow()
+  })
+
+  it('automatically call combineReducers when receive a plain object as reducer', () => {
+    const store = createStore({
+      tree: {
+        nodeOne: (state = 'one') => state, 
+        children: {
+          nodeTwo: (state = 'two') => state,
+          nodeThree: (state = 'three') => state
+        }
+      }
+    })
+
+    return store.initState().then(() => {
+      expect(store.getState()).toEqual({
+        tree: {
+          nodeOne: 'one',
+          children: {
+            nodeTwo: 'two',
+            nodeThree: 'three'
+          }
+        }
+      })
+    })
+  })
+
+  it('automatically call combineSubscribers when receive a plain object as subscriber', () => {
+    var traceOne = []
+    var traceTwo = []
+    var traceThree = []
+
+    const one = expect.createSpy((one) => {
+      traceOne.push(one)
+    }).andCallThrough()
+    const two = expect.createSpy((two) => {
+      traceTwo.push(two)
+    }).andCallThrough()
+    const three = expect.createSpy((three) => {
+      traceThree.push(three)
+    }).andCallThrough()
+
+    const store = createStore((state) => ({
+      ...state
+    }), {
+      tree: {
+        one: 1,
+        children: {
+          two: 2,
+          three: 3
+        }
+      }
+    })
+
+    store.subscribe({
+      tree: {
+        one, 
+        children: {
+          two,
+          three
+        }
+      }
+    })
+
+    return store.initState().then(() => {
+      expect(one.calls.length).toEqual(1)
+      expect(two.calls.length).toEqual(1)
+      expect(three.calls.length).toEqual(1)
+      expect(traceOne).toEqual([ 1 ])
+      expect(traceTwo).toEqual([ 2 ])
+      expect(traceThree).toEqual([ 3 ])
+    })
   })
 
   it('passes the initial action and the initial state', () => {
@@ -255,12 +322,12 @@ describe('createStore', () => {
 
       unsubscribeA = store.subscribe(listenerA)
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('1'))
     }).then(() => {
       expect(listenerA.calls.length).toBe(1)
       expect(listenerB.calls.length).toBe(0)
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('2'))
     }).then(() => {
       expect(listenerA.calls.length).toBe(2)
       expect(listenerB.calls.length).toBe(0)
@@ -269,7 +336,7 @@ describe('createStore', () => {
       expect(listenerA.calls.length).toBe(2)
       expect(listenerB.calls.length).toBe(0)
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('3'))
     }).then(() => {
       expect(listenerA.calls.length).toBe(3)
       expect(listenerB.calls.length).toBe(1)
@@ -278,7 +345,7 @@ describe('createStore', () => {
       expect(listenerA.calls.length).toBe(3)
       expect(listenerB.calls.length).toBe(1)
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('4'))
     }).then(() => {
       expect(listenerA.calls.length).toBe(3)
       expect(listenerB.calls.length).toBe(2)
@@ -287,7 +354,7 @@ describe('createStore', () => {
       expect(listenerA.calls.length).toBe(3)
       expect(listenerB.calls.length).toBe(2)
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('5'))
     }).then(() => {
       expect(listenerA.calls.length).toBe(3)
       expect(listenerB.calls.length).toBe(2)
@@ -296,7 +363,7 @@ describe('createStore', () => {
       expect(listenerA.calls.length).toBe(3)
       expect(listenerB.calls.length).toBe(2)
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('6'))
     }).then(() => {
       expect(listenerA.calls.length).toBe(4)
       expect(listenerB.calls.length).toBe(2)
@@ -319,7 +386,7 @@ describe('createStore', () => {
       unsubscribeA()
       unsubscribeA()
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('1'))
     }).then(() => {
       expect(listenerA.calls.length).toBe(0)
       expect(listenerB.calls.length).toBe(1)
@@ -339,7 +406,7 @@ describe('createStore', () => {
       unsubscribeSecond()
       unsubscribeSecond()
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('1'))
     }).then(() => {
       expect(listener.calls.length).toBe(1)
     })
@@ -360,9 +427,9 @@ describe('createStore', () => {
       })
       store.subscribe(listenerC)
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('1'))
     }).then(() => {
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('2'))
     }).then(() => {
       expect(listenerA.calls.length).toBe(2)
       expect(listenerB.calls.length).toBe(1)
@@ -390,13 +457,13 @@ describe('createStore', () => {
       }))
       unsubscribeHandles.push(store.subscribe(() => listener3()))
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('1'))
     }).then(() => {
       expect(listener1.calls.length).toBe(1)
       expect(listener2.calls.length).toBe(1)
       expect(listener3.calls.length).toBe(1)
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('2'))
     }).then(() => {
       expect(listener1.calls.length).toBe(1)
       expect(listener2.calls.length).toBe(1)
@@ -426,13 +493,13 @@ describe('createStore', () => {
         maybeAddThirdListener()
       })
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('1'))
     }).then(() => {
       expect(listener1.calls.length).toBe(1)
       expect(listener2.calls.length).toBe(1)
       expect(listener3.calls.length).toBe(0)
 
-      return store.dispatch(unknownAction())
+      return store.dispatch(addTodo('2'))
     }).then(() => {
       expect(listener1.calls.length).toBe(2)
       expect(listener2.calls.length).toBe(2)
@@ -774,19 +841,19 @@ describe('createStore', () => {
     ).toNotThrow()
   })
 
-  it('throws if nextReducer is not a function', () => {
+  it('throws if nextReducer is not a function or a plain object', () => {
     const store = createStore(reducers.todos)
 
     expect(() =>
       store.replaceReducer()
-    ).toThrow('Expected the nextReducer to be a function.')
+    ).toThrow('Expected the nextReducer to be a function or a plain object.')
 
     expect(() =>
       store.replaceReducer(() => {})
     ).toNotThrow()
   })
 
-  it('throws if listener is not a function', () => {
+  it('throws if listener is not a function or a plain object', () => {
     const store = createStore(reducers.todos)
 
     expect(() =>

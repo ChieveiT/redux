@@ -22,19 +22,13 @@ function getUnexpectedStateShapeWarningMessage(inputState, subscribers) {
 
 /**
  * Turns an object whose values are different subscriber functions, into a single
- * subscriber function. It will call every child subscriber, and gather their results
- * into a single state object, whose keys correspond to the keys of the passed
- * subscriber functions.
+ * subscriber function. Every child subscriber listen to a sub-state and only the
+ * sub-state has been changed, the subscriber will be notified.
  *
  * @param {Object} subscribers An object whose values correspond to different
- * subscriber functions that need to be combined into one. One handy way to obtain
- * it is to use ES6 `import * as subscribers` syntax. The subscribers may never return
- * undefined for any action. Instead, they should return their initial state
- * if the state passed to them was undefined, and the current state for any
- * unrecognized action.
+ * subscriber functions that need to be combined into one.
  *
- * @returns {Function} A subscriber function that invokes every subscriber inside the
- * passed object, and builds a state object with the same shape.
+ * @returns {Function} A subscriber function that listen to a state tree.
  */
 export default function combineSubscribers(subscribers) {
   if (!isPlainObject(subscribers)) {

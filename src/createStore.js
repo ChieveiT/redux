@@ -1,5 +1,7 @@
 import isPlainObject from 'lodash/isPlainObject'
 import $$observable from 'symbol-observable'
+import combineReducers from './combineReducers'
+import combineSubscribers from './combineSubscribers'
 
 /**
  * These are private action types reserved by Redux.
@@ -42,16 +44,23 @@ export default function createStore(reducer, preloadedState, enhancer) {
     preloadedState = undefined
   }
 
+  // automatically call combineReducers
+  if (isPlainObject(reducer)) {
+    reducer = combineReducers(reducer)
+  }
+
+  if (typeof reducer !== 'function') {
+    throw new Error(
+      'Expected the reducer to be a function or a plain object.'
+    )
+  }
+
   if (typeof enhancer !== 'undefined') {
     if (typeof enhancer !== 'function') {
       throw new Error('Expected the enhancer to be a function.')
     }
 
     return enhancer(createStore)(reducer, preloadedState)
-  }
-
-  if (typeof reducer !== 'function') {
-    throw new Error('Expected the reducer to be a function.')
   }
 
   var currentReducer = reducer
@@ -99,8 +108,15 @@ export default function createStore(reducer, preloadedState, enhancer) {
    * @returns {Function} A function to remove this change listener.
    */
   function subscribe(listener) {
+    // automatically call combineSubscribers
+    if (isPlainObject(listener)) {
+      listener = combineSubscribers(listener)
+    }
+
     if (typeof listener !== 'function') {
-      throw new Error('Expected listener to be a function.')
+      throw new Error(
+        'Expected listener to be a function or a plain object.'
+      )
     }
 
     var isSubscribed = true
@@ -191,19 +207,22 @@ export default function createStore(reducer, preloadedState, enhancer) {
           )
         }
 
-        currentState = state
+        // only notify subscribers when state has been changed
+        if (currentState !== state) {
+          currentState = state
 
-        var listeners = currentListeners = nextListeners
-        var promises = []
-        for (var i = 0; i < listeners.length; i++) {
-          var result = listeners[i]()
-          promises.push(result)
+          var listeners = currentListeners = nextListeners
+          var promises = []
+          for (var i = 0; i < listeners.length; i++) {
+            var result = listeners[i](currentState)
+            promises.push(result)
+          }
+
+          return Promise.all(promises)
         }
-
-        return Promise.all(promises)
       }).then(function () {
         resolve(action)
-      }).catch(function (e) {
+      }, function (e) {
         reject(e)
       })
     })
@@ -220,10 +239,17 @@ export default function createStore(reducer, preloadedState, enhancer) {
    * @returns {void}
    */
   function replaceReducer(nextReducer) {
-    if (typeof nextReducer !== 'function') {
-      throw new Error('Expected the nextReducer to be a function.')
+    // automatically call combineReducers
+    if (isPlainObject(nextReducer)) {
+      nextReducer = combineReducers(nextReducer)
     }
 
+    if (typeof nextReducer !== 'function') {
+      throw new Error(
+        'Expected the nextReducer to be a function or a plain object.'
+      )
+    }
+    
     currentReducer = nextReducer
   }
 

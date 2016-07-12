@@ -52,8 +52,7 @@ describe('Utils', () => {
             nodeTwo: (state = 'two') => state,
             nodeThree: (state = 'three') => state
           }
-        },
-        stack: (state = []) => state
+        }
       })
 
       return reducer().then((state) => {
@@ -64,8 +63,7 @@ describe('Utils', () => {
               nodeTwo: 'two',
               nodeThree: 'three'
             }
-          },
-          stack: []
+          }
         })
       })
     })
@@ -325,7 +323,7 @@ describe('Utils', () => {
         )
 
         spy.restore()
-      })      
+      })
     })
   })
 })

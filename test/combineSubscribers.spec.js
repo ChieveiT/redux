@@ -103,7 +103,6 @@ describe('Utils', () => {
       var traceOne = []
       var traceTwo = []
       var traceThree = []
-      var traceStack = []
 
       const one = expect.createSpy((one) => {
         traceOne.push(one)
@@ -114,9 +113,6 @@ describe('Utils', () => {
       const three = expect.createSpy((three) => {
         traceThree.push(three)
       }).andCallThrough()
-      const stack = expect.createSpy((stack) => {
-        traceStack.push(stack)
-      }).andCallThrough()
 
       const subscriber = combineSubscribers({
         tree: {
@@ -125,8 +121,7 @@ describe('Utils', () => {
             two,
             three
           }
-        },
-        stack
+        }
       })
 
       return subscriber({
@@ -136,17 +131,14 @@ describe('Utils', () => {
             two: 2,
             three: 3
           }
-        },
-        stack: 4
+        }
       }).then(() => {
         expect(one.calls.length).toEqual(1)
         expect(two.calls.length).toEqual(1)
         expect(three.calls.length).toEqual(1)
-        expect(stack.calls.length).toEqual(1)
         expect(traceOne).toEqual([ 1 ])
         expect(traceTwo).toEqual([ 2 ])
         expect(traceThree).toEqual([ 3 ])
-        expect(traceStack).toEqual([ 4 ])
 
         return subscriber({
           tree: {
@@ -155,18 +147,15 @@ describe('Utils', () => {
               two: 20,
               three: 3
             }
-          },
-          stack: 40
+          }
         })
       }).then(() => {
         expect(one.calls.length).toEqual(1)
         expect(two.calls.length).toEqual(2)
         expect(three.calls.length).toEqual(1)
-        expect(stack.calls.length).toEqual(2)
         expect(traceOne).toEqual([ 1 ])
         expect(traceTwo).toEqual([ 2, 20 ])
         expect(traceThree).toEqual([ 3 ])
-        expect(traceStack).toEqual([ 4, 40 ])
       })
     })
 
