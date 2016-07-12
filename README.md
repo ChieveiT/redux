@@ -24,9 +24,9 @@ Fork from [redux](https://github.com/reactjs/redux) to support promise in reduce
 
 5. Automatically call combineReducers in createStore() and store.replaceReducer() while automatically call combineSubscribers in store.subscribe(). Both combineReducers and combineSubscribers are still exposed to module object but using them explicitly is not recommended now.
 
-6. As achieving the point 3 above, subscriber will receive the state to which it listens as its first argument. It is considered a necessary contract which always makes the subscriber combined by combineSubscribers receive the current state to internally compare with the previous state in order to determine whether to notify sub-subscribers or not. 
+6. As achieving the 3rd point above, subscriber will receive the state to which it listens as its first argument. It is considered a necessary contract which always makes the subscriber combined by combineSubscribers receive the current state to internally compare with the previous state in order to determine whether to notify sub-subscribers or not. 
 
-7. Due to the point 3 above, pass initial state to createStore is not recommended now. Once you do so, the initial state is usually equal to itself after reducing and all subscribers will lose the chance to be notified for init action. Most of the time I don't think that is what you want. So try to init state in reducer instead of passing it to createStore.
+7. Due to the 3rd point, pass initial state to createStore is not recommended now. Once you do so, the initial state is usually equal to itself after reducing and all subscribers will lose the chance to be notified for init action. Most of the time I don't think that is what you want. So try to init state in reducer instead of passing it to createStore.
 
 ### Examples
 
