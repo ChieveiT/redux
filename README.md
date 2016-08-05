@@ -1,5 +1,7 @@
 # <a href='http://redux.js.org'><img src='https://camo.githubusercontent.com/f28b5bc7822f1b7bb28a96d8d09e7d79169248fc/687474703a2f2f692e696d6775722e636f6d2f4a65567164514d2e706e67' height='60'></a>
 
+_Deprecated_. This repo is not maintained any more. A new version is placed to [coeus](https://github.com/ChieveiT/coeus#internal-redux) as the internal tool.
+
 Fork from [redux](https://github.com/reactjs/redux) to support promise in reducers and subscribers.
 
 [![Build Status](https://travis-ci.org/ChieveiT/redux.svg?branch=coeus-redux)](https://travis-ci.org/ChieveiT/redux)
